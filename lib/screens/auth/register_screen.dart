@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../services/supabase_service.dart';
 import '../../utils/app_routes.dart';
 import '../../widgets/custom_input_field.dart';
@@ -91,28 +92,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   CustomInputField(
                     controller: _nameController,
                     labelText: 'Full Name',
-                    validator: (v) => v == null || v.isEmpty ? 'Nama wajib diisi' : null,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Nama wajib diisi' : null,
                   ),
                   const SizedBox(height: 20),
                   CustomInputField(
                     controller: _emailController,
                     labelText: 'Email',
                     keyboardType: TextInputType.emailAddress,
-                    validator: (v) => v == null || !GetUtils.isEmail(v) ? 'Email tidak valid' : null,
+                    validator: (v) =>
+                        v == null || !GetUtils.isEmail(v) ? 'Email tidak valid' : null,
                   ),
                   const SizedBox(height: 20),
                   CustomInputField(
                     controller: _passwordController,
                     labelText: 'Password',
                     obscureText: true,
-                    validator: (v) => v == null || v.length < 6 ? 'Minimal 6 karakter' : null,
+                    validator: (v) =>
+                        v == null || v.length < 6 ? 'Minimal 6 karakter' : null,
                   ),
                   const SizedBox(height: 20),
                   CustomInputField(
                     controller: _confirmPasswordController,
                     labelText: 'Confirm Password',
                     obscureText: true,
-                    validator: (v) => v != _passwordController.text ? 'Tidak cocok' : null,
+                    validator: (v) =>
+                        v != _passwordController.text ? 'Tidak cocok' : null,
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(
