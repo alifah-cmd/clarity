@@ -1,4 +1,4 @@
-package com.example.myapp
+package com.bagaline.clarity
 
 import io.flutter.embedding.android.FlutterActivity
 
