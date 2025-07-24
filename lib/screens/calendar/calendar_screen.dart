@@ -16,7 +16,6 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   
-  // State untuk mengelola tanggal yang dipilih dan fokus kalender
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
@@ -29,7 +28,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDEBEE), // Warna pink muda
+      backgroundColor: const Color(0xFFFDEBEE), 
       appBar: AppBar(
         title: Text(
           DateFormat('MMMM yyyy').format(_focusedDay),
@@ -40,14 +39,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: () { /* Logika untuk search */ },
+            onPressed: () { },
             icon: const Icon(Icons.search, color: Colors.black, size: 28),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Widget Kalender
           TableCalendar(
             firstDay: DateTime.utc(2020, 1, 1),
             lastDay: DateTime.utc(2030, 12, 31),
@@ -59,15 +57,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
             onDaySelected: (selectedDay, focusedDay) {
               setState(() {
                 _selectedDay = selectedDay;
-                _focusedDay = focusedDay; // Update fokus saat tanggal dipilih
+                _focusedDay = focusedDay;
               });
             },
             onPageChanged: (focusedDay) {
-              _focusedDay = focusedDay; // Update fokus saat bulan diganti
+              _focusedDay = focusedDay; 
               setState(() {});
             },
-            // Kustomisasi tampilan kalender
-            headerVisible: false, // Sembunyikan header default
+            headerVisible: false, 
             calendarStyle: CalendarStyle(
               todayDecoration: BoxDecoration(
                 color: Colors.pink[100],
@@ -81,7 +78,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Daftar tugas untuk tanggal yang dipilih
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(20.0),
@@ -102,7 +98,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   const Divider(height: 24),
                   Expanded(
                     child: FutureBuilder<List<Task>>(
-                      // Panggil stream dari service dengan tanggal yang dipilih
                       future: _supabaseService.getTasks(_selectedDay!),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -111,8 +106,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         if (snapshot.hasError) {
                           return Center(child: Text('Error: ${snapshot.error}'));
                         }
-                        
-                        // PERBAIKAN: Menambahkan tipe data List<Task> secara eksplisit
+                    
                         final List<Task> tasks = snapshot.data ?? [];
 
                         if (tasks.isEmpty) {
@@ -123,13 +117,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ),
                           );
                         }
-
-                        // Tampilkan daftar tugas
                         return ListView.builder(
                           itemCount: tasks.length,
                           itemBuilder: (context, index) {
                             final task = tasks[index];
-                            // Gunakan widget TaskCard yang sudah ada
                             return TaskCard(task: task, onToggleComplete: (taskId, isCompleted) {  },);
                           },
                           );

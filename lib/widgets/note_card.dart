@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/note_model.dart'; // Ganti 'myapp'
+import '../../models/note_model.dart'; 
 
 class NoteCard extends StatelessWidget {
   final Note note;
@@ -21,7 +21,7 @@ class NoteCard extends StatelessWidget {
       color: Colors.yellow[100],
       child: InkWell(
         onTap: onTap,
-        onLongPress: onLongPress, // Untuk aksi hapus
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(15),
         child: Padding(
           padding: const EdgeInsets.all(16.0),

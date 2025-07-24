@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../screens/calendar/calendar_screen.dart'; // Ganti 'myapp'
-import '../../screens/home/home_screen.dart';       // Ganti 'myapp'
-import '../../screens/class/class_list_screen.dart';// Ganti 'myapp'
-import '../../screens/profile/profile_screen.dart'; // Ganti 'myapp'
-import '../../utils/app_routes.dart';               // Ganti 'myapp'
+import '../../screens/calendar/calendar_screen.dart'; 
+import '../../screens/home/home_screen.dart';       
+import '../../screens/class/class_list_screen.dart';
+import '../../screens/profile/profile_screen.dart'; 
+import '../../utils/app_routes.dart';               
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -14,22 +14,17 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  // State untuk melacak indeks halaman yang sedang aktif
   int _selectedIndex = 0;
 
-  // Daftar halaman yang akan ditampilkan
   static const List<Widget> _widgetOptions = <Widget>[
     HomeScreen(),
     CalendarScreen(),
-    // Indeks 2 untuk tombol '+' akan ditangani secara khusus
-    SizedBox.shrink(), // Placeholder kosong
-    ClassListScreen(), // DIGANTI: dari NotesListScreen ke ClassListScreen
+    SizedBox.shrink(), 
+    ClassListScreen(), 
     ProfileScreen(),
   ];
 
-  // Fungsi untuk menangani saat item navigasi ditekan
   void _onItemTapped(int index) {
-    // Tombol '+' (indeks 2) akan ditangani secara khusus
     if (index == 2) {
       _showAddTaskPopup();
       return;
@@ -38,8 +33,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       _selectedIndex = index;
     });
   }
-
-  // Fungsi untuk menampilkan pop-up "Add Task" atau "Note"
   void _showAddTaskPopup() {
     Get.bottomSheet(
       Container(
@@ -58,8 +51,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           children: [
             ElevatedButton(
               onPressed: () {
-                Get.back(); // Tutup bottom sheet
-                Get.toNamed(AppRoutes.taskForm); // Navigasi ke halaman form tugas
+                Get.back(); 
+                Get.toNamed(AppRoutes.taskForm); 
               },
               style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[100],
@@ -69,8 +62,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             const SizedBox(height: 15),
             ElevatedButton(
               onPressed: () {
-                 Get.back(); // Tutup bottom sheet
-                 Get.toNamed(AppRoutes.noteForm); // Navigasi ke halaman form catatan
+                 Get.back(); 
+                 Get.toNamed(AppRoutes.noteForm); 
               },
               style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.pink[100],
@@ -86,11 +79,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Tampilkan halaman yang sesuai dengan indeks yang dipilih
       body: Center(
         child: _widgetOptions.elementAt(_selectedIndex),
       ),
-      // Definisikan Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -107,7 +98,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             icon: Icon(Icons.add_circle, size: 40),
             label: 'Add',
           ),
-          // PERUBAHAN DI SINI
           BottomNavigationBarItem(
             icon: Icon(Icons.school_outlined),
             activeIcon: Icon(Icons.school),
@@ -120,11 +110,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
         ],
         currentIndex: _selectedIndex,
-        // Kustomisasi warna
-        selectedItemColor: Colors.deepPurple[400], // Warna ikon & label saat aktif
-        unselectedItemColor: Colors.grey[600],   // Warna ikon & label saat tidak aktif
+        selectedItemColor: Colors.deepPurple[400], 
+        unselectedItemColor: Colors.grey[600],
         onTap: _onItemTapped,
-        // Konfigurasi tambahan agar label selalu terlihat dan tidak ada efek geser
         type: BottomNavigationBarType.fixed,
         showUnselectedLabels: true,
       ),

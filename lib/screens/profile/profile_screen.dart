@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:typed_data';
 import '../../utils/app_routes.dart';
 import '../../widgets/custom_input_field.dart';
 import '../../models/user_profile_model.dart';
 import '../../services/supabase_service.dart';
-import 'package:image_picker/image_picker.dart'; // Import for image picking
-import 'dart:io'; // Import for File
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -21,7 +23,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   bool _isLoading = true;
   String? _avatarUrl;
-  File? _pickedImage; // To store the picked image file
+  
+  File? _pickedImageFile; 
+  Uint8List? _pickedImageBytes; 
+  String? _pickedImageExtension; 
 
   @override
   void initState() {
@@ -37,76 +42,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
     try {
       final UserProfile profile = await _supabaseService.getProfile();
-      // Ensure currentUser is not null before accessing its email
       final currentUserEmail = Supabase.instance.client.auth.currentUser?.email;
 
       _nameController.text = profile.fullName;
       _avatarUrl = profile.avatarUrl;
-      _emailController.text = currentUserEmail ?? ''; // Handle null email gracefully
+      _emailController.text = currentUserEmail ?? '';
     } catch (e) {
-      Get.snackbar(
-        'Error Loading Profile',
-        'Failed to load profile data: ${e.toString()}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-      // You might want to navigate back or show a persistent error here
+      Get.snackbar('Error Loading Profile', 'Failed to load profile data: ${e.toString()}');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
-
   Future<void> _updateProfile() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
     try {
-      String? newAvatarUrl = _avatarUrl;
-      if (_pickedImage != null) {
-        // Assuming 'avatars' is your storage bucket name
-        newAvatarUrl = await _supabaseService.uploadImage(_pickedImage!, 'avatars');
+      String? updatedAvatarUrl = _avatarUrl;
+
+      if (kIsWeb && _pickedImageBytes != null) {
+        updatedAvatarUrl = await _supabaseService.uploadImageBytes(_pickedImageBytes!, _pickedImageExtension!, 'avatars');
+      } else if (!kIsWeb && _pickedImageFile != null) {
+        updatedAvatarUrl = await _supabaseService.uploadImageFile(_pickedImageFile!, 'avatars');
       }
 
       await _supabaseService.updateProfile(
         fullName: _nameController.text.trim(),
-        avatarUrl: newAvatarUrl,
+        avatarUrl: updatedAvatarUrl,
       );
-      Get.snackbar('Success', 'Profile updated successfully',
-          backgroundColor: Colors.green, colorText: Colors.white);
-      // Reload profile to reflect new avatar URL if it was changed
+
+      Get.snackbar('Success', 'Profile updated successfully');
       await _loadProfile();
+
     } catch (e) {
-      Get.snackbar('Error Updating Profile', 'Failed to update profile: ${e.toString()}',
-          backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('Error Updating Profile', 'Failed to update profile: ${e.toString()}');
     } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _pickedImageFile = null;
+          _pickedImageBytes = null;
         });
       }
     }
   }
-
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
 
     if (image != null) {
-      setState(() {
-        _pickedImage = File(image.path);
-        // Temporarily update avatarUrl to show the new image immediately
-        _avatarUrl = image.path; // This will show the local file path, but NetworkImage needs a URL
-      });
-      // The actual upload and URL update will happen when _updateProfile is called
+      _pickedImageExtension = image.name.split('.').last;
+      if (kIsWeb) {
+        _pickedImageBytes = await image.readAsBytes();
+        _pickedImageFile = null; 
+      } else {
+        _pickedImageFile = File(image.path);
+        _pickedImageBytes = null; 
+      }
+      setState(() {}); 
     }
   }
 
@@ -115,8 +109,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFDEBEE),
       appBar: AppBar(
-        title: const Text('My Account',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('My Account', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -131,21 +124,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   GestureDetector(
-                    onTap: _pickImage, // Allow tapping to change picture
+                    onTap: _pickImage,
                     child: CircleAvatar(
                       radius: 60,
                       backgroundColor: const Color(0xFFE8E2FF),
-                      backgroundImage: _pickedImage != null // Show picked image first
-                          ? FileImage(_pickedImage!) as ImageProvider<Object>?
-                          : (_avatarUrl != null ? NetworkImage(_avatarUrl!) : null),
-                      child: (_pickedImage == null && _avatarUrl == null)
+                      backgroundImage: _pickedImageBytes != null
+                          ? MemoryImage(_pickedImageBytes!) as ImageProvider
+                          : _pickedImageFile != null
+                              ? FileImage(_pickedImageFile!) as ImageProvider
+                              : _avatarUrl != null && _avatarUrl!.isNotEmpty
+                                  ? NetworkImage(_avatarUrl!)
+                                  : null,
+                      child: (_pickedImageFile == null && _pickedImageBytes == null && (_avatarUrl == null || _avatarUrl!.isEmpty))
                           ? const Icon(Icons.person, size: 60, color: Colors.white)
                           : null,
                     ),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
-                    onPressed: _pickImage, // Button to change picture
+                    onPressed: _pickImage,
                     icon: const Icon(Icons.edit, size: 18),
                     label: const Text('Change Picture'),
                     style: ElevatedButton.styleFrom(
@@ -154,13 +151,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 40),
-
                   CustomInputField(
                     controller: _nameController,
                     labelText: 'Name',
                   ),
                   const SizedBox(height: 20),
-                  // Email made non-editable
                   TextFormField(
                     controller: _emailController,
                     readOnly: true,
@@ -175,7 +170,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 40),
-
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -183,12 +177,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFB39DDB),
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
-                      child: const Text('Change Password',
-                          style: TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: const Text('Change Password', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -199,15 +190,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.pink[200],
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
                       child: _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Save Changes',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
+                          : const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../models/task_model.dart'; // Ganti 'myapp'
-import '../../services/supabase_service.dart'; // Ganti 'myapp'
+import '../../models/task_model.dart';
+import '../../services/supabase_service.dart';
 
 class TaskCard extends StatefulWidget {
   final Task task;
@@ -20,20 +20,15 @@ class _TaskCardState extends State<TaskCard> {
     _isCompleted = widget.task.isCompleted;
   }
 
-  // Fungsi untuk update status checkbox
   void _onCheckboxChanged(bool? value) {
     if (value == null) return;
     
-    // Update tampilan secara instan
     setState(() {
       _isCompleted = value;
     });
-    
-    // Panggil service untuk menyimpan perubahan ke database Supabase
     try {
       _supabaseService.updateTaskStatus(widget.task.id, value);
     } catch (e) {
-      // Jika gagal, kembalikan state dan tampilkan error
       setState(() {
         _isCompleted = !value;
       });
@@ -45,7 +40,6 @@ class _TaskCardState extends State<TaskCard> {
 
   @override
   Widget build(BuildContext context) {
-    // Tentukan warna berdasarkan status tugas
     final cardColor = _isCompleted ? Colors.grey[300] : Colors.pink[50];
     final textColor = _isCompleted ? Colors.grey[600] : Colors.black;
 
@@ -56,7 +50,6 @@ class _TaskCardState extends State<TaskCard> {
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        // Checkbox di sebelah kiri
         leading: Checkbox(
           value: _isCompleted,
           onChanged: _onCheckboxChanged,
@@ -64,7 +57,6 @@ class _TaskCardState extends State<TaskCard> {
           shape: const CircleBorder(),
           side: const BorderSide(color: Colors.grey, width: 2),
         ),
-        // Judul tugas
         title: Text(
           widget.task.title,
           style: TextStyle(
@@ -73,7 +65,6 @@ class _TaskCardState extends State<TaskCard> {
             decoration: _isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
           ),
         ),
-        // Subtitle untuk waktu
         subtitle: Text(
           '${widget.task.startTime} - ${widget.task.endTime}',
           style: TextStyle(

@@ -2,8 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart'; // untuk format jam
-import 'package:myapp/widgets/custom_input_field.dart';
+import 'package:intl/intl.dart'; 
+import '../../widgets/custom_input_field.dart';
 
 class QuestionFormControllers {
   final TextEditingController question;
@@ -106,8 +106,6 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
         return;
       }
     }
-
-    // Contoh insert payload ke backend / Supabase
     final payload = {
       'class_name': _className,
       'day_of_week': _selectedDay,

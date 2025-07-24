@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../models/note_model.dart'; // Ganti 'myapp'
-import '../../services/supabase_service.dart'; // Ganti 'myapp'
-import '../../utils/app_routes.dart'; // Ganti 'myapp'
-import '../../widgets/note_card.dart'; // Ganti 'myapp'
+import '../../models/note_model.dart'; 
+import '../../services/supabase_service.dart'; 
+import '../../utils/app_routes.dart'; 
+import '../../widgets/note_card.dart'; 
 
 class NotesListScreen extends StatefulWidget {
   const NotesListScreen({super.key});
@@ -26,7 +26,7 @@ class _NotesListScreenState extends State<NotesListScreen> {
           TextButton(onPressed: () => Get.back(), child: const Text('Batal')),
           TextButton(
             onPressed: () async {
-              Get.back(); // Tutup dialog
+              Get.back(); 
               try {
                 await _supabaseService.deleteNote(note.id);
                 Get.snackbar(
@@ -94,15 +94,13 @@ class _NotesListScreenState extends State<NotesListScreen> {
               ),
             );
           }
-
-          // Tampilkan daftar catatan menggunakan GridView
           return GridView.builder(
             padding: const EdgeInsets.all(16.0),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, // 2 kolom
+              crossAxisCount: 2,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              childAspectRatio: 0.8, // Atur rasio kartu
+              childAspectRatio: 0.8, 
             ),
             itemCount: notes.length,
             itemBuilder: (context, index) {
@@ -110,7 +108,6 @@ class _NotesListScreenState extends State<NotesListScreen> {
               return NoteCard(
                 note: note,
                 onTap: () {
-                  // Kirim data note ke form untuk mode edit
                   Get.toNamed(AppRoutes.noteForm, arguments: note);
                 },
                 onLongPress: () {

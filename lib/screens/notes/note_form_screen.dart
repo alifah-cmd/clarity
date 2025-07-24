@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../models/note_model.dart'; // Ganti 'myapp'
-import '../../services/supabase_service.dart'; // Ganti 'myapp'
+import '../../models/note_model.dart'; 
+import '../../services/supabase_service.dart'; 
 
 class NoteFormScreen extends StatefulWidget {
   const NoteFormScreen({super.key});
@@ -16,7 +16,6 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final SupabaseService _supabaseService = SupabaseService();
 
-  // Cek apakah ini mode edit atau buat baru
   Note? _existingNote;
   bool get _isEditMode => _existingNote != null;
   bool _isLoading = false;
@@ -24,7 +23,6 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
   @override
   void initState() {
     super.initState();
-    // Ambil data note jika ada (dari mode edit)
     if (Get.arguments is Note) {
       _existingNote = Get.arguments;
       _titleController.text = _existingNote!.title;
@@ -51,14 +49,12 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
       };
 
       if (_isEditMode) {
-        // Mode edit: panggil fungsi update
         await _supabaseService.updateNote(_existingNote!.id, noteData);
       } else {
-        // Mode buat baru: panggil fungsi add
         await _supabaseService.addNote(noteData);
       }
 
-      Get.back(); // Kembali ke daftar catatan
+      Get.back();
       Get.snackbar(
         'Sukses',
         'Catatan berhasil disimpan.',
@@ -113,7 +109,6 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // Input untuk Judul
               TextFormField(
                 controller: _titleController,
                 validator: (value) => value!.isEmpty ? 'Judul tidak boleh kosong' : null,
@@ -124,11 +119,10 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Input untuk Konten
               Expanded(
                 child: TextFormField(
                   controller: _contentController,
-                  maxLines: null, // Membuatnya bisa di-expand
+                  maxLines: null, 
                   expands: true,
                   style: const TextStyle(fontSize: 16),
                   decoration: const InputDecoration(

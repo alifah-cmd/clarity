@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../models/class_model.dart'; // Ganti 'myapp'
-import '../../utils/app_routes.dart';   // Ganti 'myapp'
+import '../../models/quiz_model.dart';
+import '../../utils/app_routes.dart';
 
 class QuizStartScreen extends StatelessWidget {
   const QuizStartScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Ambil data kelas yang dikirim dari halaman sebelumnya
-    final ClassModel? classItem = Get.arguments as ClassModel?;
+    final Quiz quiz = Get.arguments as Quiz;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFDEBEE), // Warna pink muda
+      backgroundColor: const Color(0xFFFDEBEE), 
       appBar: AppBar(
+        title: Text(quiz.title), 
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -27,14 +28,10 @@ class QuizStartScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Spacer untuk mendorong konten ke bawah
             const Spacer(),
-
-            // Tombol "Are You Ready?"
             ElevatedButton(
               onPressed: () {
-                // Navigasi ke halaman mengerjakan kuis, kirim data kelas
-                Get.toNamed(AppRoutes.quizTaking, arguments: classItem);
+                Get.toNamed(AppRoutes.quizTaking, arguments: quiz);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFE57373),
@@ -52,14 +49,12 @@ class QuizStartScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
             const Spacer(),
-
-            // Ilustrasi di bagian bawah
-            Image.asset(
-              'assets/images/areyou.png', // Pastikan Anda punya gambar ini
-              height: Get.height * 0.35, // 35% dari tinggi layar
-            ),
+            // Ilustrasi (pastikan path gambar sudah benar)
+            // Image.asset(
+            //   'assets/images/areyou.png',
+            //   height: Get.height * 0.35,
+            // ),
           ],
         ),
       ),

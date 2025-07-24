@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../models/task_model.dart';
+import '../../models/class_model.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/app_routes.dart';
 import '../../widgets/task_card.dart';
+import '../../widgets/class_card_home.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               actions: [
                 IconButton(
-                  onPressed: () {},
+                  onPressed: () => Get.toNamed(AppRoutes.search),
                   icon: const Icon(Icons.search, color: Colors.black, size: 28),
                 ),
               ],
@@ -59,9 +61,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             _buildHorizontalDateSelector(),
-            SliverFillRemaining(
-              hasScrollBody: false,
+            
+            SliverToBoxAdapter(
               child: Container(
+                constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height * 0.5),
                 padding: const EdgeInsets.all(24.0),
                 decoration: const BoxDecoration(
                   color: Color(0xFFE8E2FF),
@@ -78,44 +81,47 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
                     ),
                     const SizedBox(height: 20),
-                    Expanded(
-                      child: FutureBuilder<List<Task>>(
-                        future: _supabaseService.getTasks(_selectedDate),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
-                          }
-                          if (snapshot.hasError) {
-                            return Center(child: Text('Error: ${snapshot.error}'));
-                          }
+                    StreamBuilder<List<dynamic>>(
+                      stream: _supabaseService.getCombinedScheduleStream(_selectedDate), 
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (snapshot.hasError) {
+                          return Center(child: Text('Error: ${snapshot.error}'));
+                        }
 
-                          final tasks = snapshot.data ?? [];
+                        final schedule = snapshot.data ?? [];
 
-                          if (tasks.isEmpty) {
-                            return const Center(
+                        if (schedule.isEmpty) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 40),
                               child: Text(
-                                'Tidak ada jadwal untuk hari ini.\nSilakan tambahkan jadwal baru!',
+                                'Tidak ada jadwal untuk hari ini.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(fontSize: 16, color: Colors.grey),
                               ),
-                            );
-                          }
+                            ),
+                          );
+                        }
 
-                          return ListView.builder(
-                            padding: EdgeInsets.zero,
-                            itemCount: tasks.length,
-                            itemBuilder: (context, index) {
+                        return Column(
+                          children: schedule.map((item) {
+                            if (item is Task) {
                               return TaskCard(
-                                task: tasks[index],
+                                task: item,
                                 onToggleComplete: (taskId, isCompleted) {
                                   _supabaseService.updateTaskStatus(taskId, isCompleted);
-                                  setState(() {});
                                 },
                               );
-                            },
-                          );
-                        },
-                      ),
+                            } else if (item is ClassModel) {
+                              return ClassCardHome(classModel: item);
+                            }
+                            return const SizedBox.shrink();
+                          }).toList(),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -137,7 +143,9 @@ class _HomeScreenState extends State<HomeScreen> {
           itemCount: 30,
           itemBuilder: (context, index) {
             final date = DateTime.now().add(Duration(days: index));
-            final isSelected = date.day == _selectedDate.day && date.month == _selectedDate.month && date.year == _selectedDate.year;
+            final isSelected = date.day == _selectedDate.day &&
+                date.month == _selectedDate.month &&
+                date.year == _selectedDate.year;
 
             return GestureDetector(
               onTap: () {

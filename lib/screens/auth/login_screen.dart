@@ -114,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   CustomInputField(
                     controller: _passwordController,
-                    labelText: 'Confirm Password', // Sesuai gambar
+                    labelText: 'Confirm Password',
                     obscureText: true,
                     validator: (value) {
                       if (value == null || value.isEmpty) {

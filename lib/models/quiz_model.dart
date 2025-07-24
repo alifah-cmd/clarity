@@ -42,4 +42,12 @@ class Quiz {
     required this.title,
     required this.questions,
   });
+ factory Quiz.fromMap(Map<String, dynamic> map, List<Question> questions) {
+    return Quiz(
+      id: map['id'],
+      classId: map['class_id'],
+      title: map['title'],
+      questions: questions, 
+    );
+  }
 }

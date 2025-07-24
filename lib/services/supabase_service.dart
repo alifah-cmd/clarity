@@ -1,22 +1,16 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:typed_data';
+import 'package:intl/intl.dart';
 import '../../models/user_profile_model.dart';
 import '../../models/task_model.dart';
 import '../../models/note_model.dart';
 import '../../models/class_model.dart';
+import '../../models/search_history_model.dart';
 
 class SupabaseService {
   final SupabaseClient _client = Supabase.instance.client;
 
-  Future<UserProfile> getProfile() async {
-    final userId = _client.auth.currentUser!.id;
-    final data = await _client
-        .from('profiles')
-        .select()
-        .eq('id', userId)
-        .single();
-    return UserProfile.fromMap(data);
-  }
 
   Future<void> registerUser({required String fullName}) async {
     final userId = _client.auth.currentUser!.id;
@@ -35,6 +29,13 @@ class SupabaseService {
     }
   }
 
+Future<UserProfile> getProfile() async {
+    final userId = _client.auth.currentUser!.id;
+    final data =
+        await _client.from('profiles').select().eq('id', userId).single();
+    return UserProfile.fromMap(data);
+  }
+
   Future<void> updateProfile({required String fullName, String? avatarUrl}) async {
     final userId = _client.auth.currentUser!.id;
     final updates = {
@@ -50,17 +51,33 @@ class SupabaseService {
     await _client.auth.updateUser(UserAttributes(password: newPassword));
   }
 
-  Future<String> uploadImage(File file, String bucketName) async {
+  Future<String> uploadImageFile(File file, String bucketName) async {
     final userId = _client.auth.currentUser!.id;
     final fileExtension = file.path.split('.').last;
-    final fileName = '$userId/avatar.$fileExtension';
+    final fileName = '$userId/${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
 
     await _client.storage.from(bucketName).upload(
-      fileName,
-      file,
-      fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-    );
+          fileName,
+          file,
+          fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+        );
 
+    return _client.storage.from(bucketName).getPublicUrl(fileName);
+  }
+  Future<String> uploadImageBytes(Uint8List bytes, String fileExtension, String bucketName) async {
+    final userId = _client.auth.currentUser!.id;
+    final fileName = '$userId/${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+
+    await _client.storage.from(bucketName).uploadBinary(
+          fileName,
+          bytes,
+          fileOptions: FileOptions(
+            cacheControl: '3600',
+            upsert: false,
+            contentType: 'image/$fileExtension',
+          ),
+        );
+        
     return _client.storage.from(bucketName).getPublicUrl(fileName);
   }
 
@@ -137,5 +154,120 @@ class SupabaseService {
     final userId = _client.auth.currentUser!.id;
     classData['user_id'] = userId;
     await _client.from('classes').insert(classData);
+  }
+ Future<List<dynamic>> searchAllItems(String query) async {
+    if (query.isEmpty) {
+      return []; 
+    }
+
+    final userId = _client.auth.currentUser!.id;
+    final searchQuery = '%$query%'; 
+    final tasksFuture = _client
+        .from('tasks')
+        .select()
+        .eq('user_id', userId)
+        .ilike('title', searchQuery); 
+
+    final classesFuture = _client
+        .from('classes')
+        .select()
+        .eq('user_id', userId)
+        .ilike('class_name', searchQuery);
+
+    final notesFuture = _client
+        .from('notes')
+        .select()
+        .eq('user_id', userId)
+        .ilike('title', searchQuery);
+
+    final results = await Future.wait([tasksFuture, classesFuture, notesFuture]);
+
+    final List<Task> tasks = (results[0] as List).map((map) => Task.fromMap(map)).toList();
+    final List<ClassModel> classes = (results[1] as List).map((map) => ClassModel.fromMap(map)).toList();
+    final List<Note> notes = (results[2] as List).map((map) => Note.fromMap(map)).toList();
+
+    final List<dynamic> combinedList = [...tasks, ...classes, ...notes];
+    
+    return combinedList;
+  }
+
+
+Stream<List<dynamic>> getCombinedScheduleStream(DateTime date) {
+    final userId = _client.auth.currentUser!.id;
+    final startOfDay = DateTime.utc(date.year, date.month, date.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+
+    return _client
+        .from('tasks')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
+        .map((taskMaps) async {
+          final filteredTaskMaps = taskMaps.where((map) {
+            if (map['start_time'] == null) return false;
+            final startTime = DateTime.parse(map['start_time']);
+            return startTime.isAfter(startOfDay.subtract(const Duration(seconds: 1))) && startTime.isBefore(endOfDay);
+          }).toList();
+
+          final List<Task> tasks = filteredTaskMaps.map((map) => Task.fromMap(map)).toList();
+
+          final String dayOfWeek = DateFormat('EEEE', 'id_ID').format(date);
+          final classesResponse = await _client
+              .from('classes')
+              .select()
+              .eq('user_id', userId)
+              .eq('day_of_week', dayOfWeek);
+          final List<ClassModel> classes = (classesResponse as List)
+              .map((map) => ClassModel.fromMap(map))
+              .toList();
+          final List<dynamic> combinedList = [...tasks, ...classes];
+          combinedList.sort((a, b) {
+            DateTime? dateTimeA;
+            DateTime? dateTimeB;
+            if (a is Task) {
+              dateTimeA = a.startTime != null ? DateTime.parse(a.startTime as String) : null;
+            } else if (a is ClassModel) {
+              final parts = a.startTime.split(':');
+              dateTimeA = DateTime(date.year, date.month, date.day, int.parse(parts[0]), int.parse(parts[1]));
+            }
+            if (b is Task) {
+              dateTimeB = b.startTime != null ? DateTime.parse(b.startTime as String) : null;
+            } else if (b is ClassModel) {
+              final parts = b.startTime.split(':');
+              dateTimeB = DateTime(date.year, date.month, date.day, int.parse(parts[0]), int.parse(parts[1]));
+            }
+            if (dateTimeA == null && dateTimeB == null) return 0;
+            if (dateTimeA == null) return 1;
+            if (dateTimeB == null) return -1;
+            return dateTimeA.compareTo(dateTimeB);
+          });
+
+          return combinedList;
+        })
+        .asyncMap((event) => event);
+  
+}
+Stream<List<SearchHistory>> getSearchHistoryStream() {
+    final userId = _client.auth.currentUser!.id;
+    return _client
+        .from('search_history')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
+        .order('searched_at', ascending: false) 
+        .limit(10)
+        .map((maps) => maps.map((map) => SearchHistory.fromMap(map)).toList());
+  }
+  Future<void> addSearchHistory(String keyword) async {
+    final userId = _client.auth.currentUser!.id;
+    await _client.from('search_history').delete().match({
+      'user_id': userId,
+      'keyword': keyword,
+    });
+    await _client.from('search_history').insert({
+      'user_id': userId,
+      'keyword': keyword,
+    });
+  }
+  Future<void> deleteSearchHistory(String id) async {
+    await _client.from('search_history').delete().eq('id', id);
   }
 }

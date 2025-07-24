@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:myapp/services/supabase_service.dart';
-import 'package:myapp/widgets/custom_input_field.dart';
+import '../../services/supabase_service.dart';
+import '../../widgets/custom_input_field.dart';
 
 class TaskFormScreen extends StatefulWidget {
   const TaskFormScreen({super.key});
@@ -43,32 +43,29 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     });
 
     try {
-      // ✅ GABUNG TANGGAL + JAM agar ISO8601 TIMESTAMP valid
-      // ✅ FINAL: _createTask()
-final DateTime startDateTime = DateTime.utc(
-  _selectedDate!.year,
-  _selectedDate!.month,
-  _selectedDate!.day,
-  _startTime!.hour,
-  _startTime!.minute,
-);
+      final DateTime startDateTime = DateTime.utc(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _startTime!.hour,
+        _startTime!.minute,
+      );
 
-final DateTime endDateTime = DateTime.utc(
-  _selectedDate!.year,
-  _selectedDate!.month,
-  _selectedDate!.day,
-  _endTime!.hour,
-  _endTime!.minute,
-);
+      final DateTime endDateTime = DateTime.utc(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _endTime!.hour,
+        _endTime!.minute,
+      );
 
-final taskData = {
-  'title': _titleController.text.trim(),
-  'start_time': startDateTime.toIso8601String(),
-  'end_time': endDateTime.toIso8601String(),
-  'deadline': _selectedDate!.toIso8601String(),
-  'is_completed': false,
-};
-
+      final taskData = {
+        'title': _titleController.text.trim(),
+        'start_time': startDateTime.toIso8601String(),
+        'end_time': endDateTime.toIso8601String(),
+        'deadline': _selectedDate!.toIso8601String(),
+        'is_completed': false,
+      };
 
       await _supabaseService.addTask(taskData);
 
@@ -152,8 +149,9 @@ final taskData = {
               CustomInputField(
                 controller: _titleController,
                 labelText: 'task title',
-                validator: (value) =>
-                    value!.isEmpty ? 'Judul tidak boleh kosong' : null,
+                validator:
+                    (value) =>
+                        value!.isEmpty ? 'Judul tidak boleh kosong' : null,
               ),
               const SizedBox(height: 24),
 
@@ -184,7 +182,9 @@ final taskData = {
                         const Text(
                           'Start Time',
                           style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         InkWell(
@@ -192,7 +192,8 @@ final taskData = {
                           child: InputDecorator(
                             decoration: _inputDecoration(),
                             child: Text(
-                                _startTime?.format(context) ?? 'Pilih waktu'),
+                              _startTime?.format(context) ?? 'Pilih waktu',
+                            ),
                           ),
                         ),
                       ],
@@ -206,7 +207,9 @@ final taskData = {
                         const Text(
                           'End Time',
                           style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         InkWell(
@@ -214,7 +217,8 @@ final taskData = {
                           child: InputDecorator(
                             decoration: _inputDecoration(),
                             child: Text(
-                                _endTime?.format(context) ?? 'Pilih waktu'),
+                              _endTime?.format(context) ?? 'Pilih waktu',
+                            ),
                           ),
                         ),
                       ],
@@ -232,17 +236,20 @@ final taskData = {
                     backgroundColor: const Color(0xFFE57373),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30)),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
                   ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Create a Task',
-                          style: TextStyle(
+                  child:
+                      _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                            'Create a Task',
+                            style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 18),
-                        ),
+                              fontSize: 18,
+                            ),
+                          ),
                 ),
               ),
             ],

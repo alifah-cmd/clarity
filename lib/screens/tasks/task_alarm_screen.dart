@@ -1,18 +1,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:myapp/models/task_model.dart'; // Ganti 'myapp'
+import '../../models/task_model.dart'; 
 
 class TaskAlarmScreen extends StatelessWidget {
-  // Nantinya, Anda akan meneruskan data tugas yang alarmnya berbunyi ke halaman ini
-  // Untuk saat ini, kita gunakan data dummy.
   final Task? task;
   
   const TaskAlarmScreen({super.key, this.task});
 
   @override
   Widget build(BuildContext context) {
-    // Data dummy jika tidak ada data task yang diteruskan
     final displayTask = task ?? Task(
       id: 'dummy_id',
       userId: 'dummy_user',
@@ -23,7 +20,7 @@ class TaskAlarmScreen extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE8E2FF), // Warna ungu muda
+      backgroundColor: const Color(0xFFE8E2FF), 
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -39,10 +36,8 @@ class TaskAlarmScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Spacer(),
-            // Ilustrasi alarm
-            Image.asset('assets/images/alarm_illustration.png', height: 200), // Pastikan Anda punya gambar ini
+            Image.asset('assets/images/alr.png', height: 200), 
             const Spacer(),
-            // Kartu informasi tugas
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -67,7 +62,6 @@ class TaskAlarmScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 40),
-            // Tombol-tombol aksi
             ElevatedButton(
               onPressed: () {
                 

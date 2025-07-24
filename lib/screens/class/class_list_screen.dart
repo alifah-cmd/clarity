@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../models/class_model.dart'; 
-import '../../services/supabase_service.dart'; 
-import '../../utils/app_routes.dart'; 
-import '../../widgets/custom_input_field.dart'; 
+import 'package:supabase_flutter/supabase_flutter.dart'; 
+import '../../models/class_model.dart';
+import '../../utils/app_routes.dart';
 
 class ClassListScreen extends StatefulWidget {
   const ClassListScreen({super.key});
@@ -13,148 +12,208 @@ class ClassListScreen extends StatefulWidget {
 }
 
 class _ClassListScreenState extends State<ClassListScreen> {
-  final SupabaseService _supabaseService = SupabaseService();
+  final _supabase = Supabase.instance.client;
 
-  // Fungsi untuk menampilkan pop-up dan menangani pembuatan kelas baru
-  void _showCreateClassPopup() {
-    final classNameController = TextEditingController();
+  Stream<List<ClassModel>> _getClassesStream() {
+    return _supabase
+        .from('classes')
+        .stream(primaryKey: ['id']) 
+        .map((maps) => maps.map((map) => ClassModel.fromMap(map)).toList());
+  }
+
+  Future<void> _addClass(ClassModel newClass) async {
+    try {
+      final dataToInsert = newClass.toMap();
+      dataToInsert.remove('id');
+      dataToInsert['user_id'] = _supabase.auth.currentUser?.id;
+
+      await _supabase.from('classes').insert(dataToInsert);
+
+      Get.snackbar('Sukses', 'Kelas berhasil ditambahkan!');
+    } catch (e) {
+      Get.snackbar('Error', 'Gagal menambahkan kelas: ${e.toString()}');
+    }
+  }
+
+  void _showAddClassDialog() {
     final formKey = GlobalKey<FormState>();
-    bool isLoading = false; // State lokal untuk loading di dalam dialog
+    final classNameController = TextEditingController();
+    final programStudyController = TextEditingController();
+    String? selectedDay;
+    TimeOfDay? startTime;
+    TimeOfDay? endTime;
 
     Get.dialog(
-      AlertDialog(
-        title: const Text('Buat Kelas Baru'),
-        content: Form(
-          key: formKey,
-          child: CustomInputField(
-            controller: classNameController,
-            labelText: 'Nama Mata Kuliah',
-            validator: (value) => value!.isEmpty ? 'Nama tidak boleh kosong' : null,
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Batal')),
-          StatefulBuilder(
-            builder: (context, setDialogState) {
-              return ElevatedButton(
-                onPressed: isLoading ? null : () async {
-                  if (formKey.currentState!.validate()) {
-                    setDialogState(() => isLoading = true);
-                    try {
-                      // Simpan kelas baru ke database
-                      await _supabaseService.addClass({
-                        'class_name': classNameController.text.trim(),
-                        // Anda bisa menambahkan field lain di sini jika ada formnya
-                      });
-                      
-                      Get.back(); // Tutup dialog
-                      // Langsung navigasi ke halaman buat kuis dengan mengirim nama kelas
-                      Get.toNamed(
-                        AppRoutes.quizForm,
-                        arguments: {'className': classNameController.text.trim()},
-                      );
-                    } catch (e) {
-                      Get.snackbar('Error', 'Gagal membuat kelas: ${e.toString()}');
-                    } finally {
-                       setDialogState(() => isLoading = false);
-                    }
+      StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Tambahkan Kelas Baru'),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: classNameController,
+                      decoration: const InputDecoration(labelText: 'Nama Mata Kuliah'),
+                      validator: (value) => value == null || value.isEmpty ? 'Nama tidak boleh kosong' : null,
+                    ),
+                    TextFormField(
+                      controller: programStudyController,
+                      decoration: const InputDecoration(labelText: 'Program Studi'),
+                      validator: (value) => value == null || value.isEmpty ? 'Prodi tidak boleh kosong' : null,
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: selectedDay,
+                      hint: const Text('Pilih Hari'),
+                      items: ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
+                          .map((day) => DropdownMenuItem(value: day, child: Text(day)))
+                          .toList(),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedDay = value;
+                        });
+                      },
+                      validator: (value) => value == null ? 'Pilih hari' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final pickedTime = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                              if (pickedTime != null) {
+                                setDialogState(() {
+                                  startTime = pickedTime;
+                                });
+                              }
+                            },
+                            child: Text(startTime == null ? 'Jam Mulai' : startTime!.format(context)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final pickedTime = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                              if (pickedTime != null) {
+                                setDialogState(() {
+                                  endTime = pickedTime;
+                                });
+                              }
+                            },
+                            child: Text(endTime == null ? 'Jam Selesai' : endTime!.format(context)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Get.back(), child: const Text('Batal')),
+              ElevatedButton(
+                onPressed: () {
+                  if (formKey.currentState!.validate() && startTime != null && endTime != null) {
+                    final newClass = ClassModel(
+                      id: '', 
+                      userId: '', 
+                      name: classNameController.text,
+                      programStudy: programStudyController.text,
+                      dayOfWeek: selectedDay!,
+                      startTime: startTime!.format(context),
+                      endTime: endTime!.format(context),
+                    );
+                    _addClass(newClass);
+                    Get.back();
                   }
                 },
-                child: isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Lanjutkan'),
-              );
-            },
-          ),
-        ],
+                child: const Text('Simpan'),
+              ),
+            ],
+          );
+        },
       ),
     );
+  }
+
+  void _navigateToClassDetail(ClassModel classModel) {
+    Get.toNamed(AppRoutes.classDetail, arguments: classModel);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8E2FF),
       appBar: AppBar(
         title: const Text('CLASS', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.search, color: Colors.black, size: 28),
-          ),
+          IconButton(onPressed: () {}, icon: const Icon(Icons.search))
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 20),
-            // Tombol "Make Your Quiz"
-            SizedBox(
-              width: Get.width * 0.7,
-              child: ElevatedButton(
-                onPressed: _showCreateClassPopup, // Tombol ini juga membuka pop-up
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE57373),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                ),
-                child: const Text(
-                  'Make Your Quiz',
-                  style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+            ElevatedButton(
+              onPressed: _showAddClassDialog,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF08A8A),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-            ),
-            const SizedBox(height: 15),
-            // TOMBOL BARU "TAMBAHKAN KELAS"
-            SizedBox(
-              width: Get.width * 0.7,
-              child: OutlinedButton.icon(
-                onPressed: _showCreateClassPopup,
-                icon: const Icon(Icons.add),
-                label: const Text('Tambahkan Kelas'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                ),
+              child: const Text(
+                'Tambahkan Kelas',
+                style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(height: 30),
-            
-            // Daftar kelas dari database
-            Expanded(
-              child: StreamBuilder<List<ClassModel>>(
-                stream: _supabaseService.getClassesStream(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  // Tampilan jika tidak ada kelas
-                  if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Text(
-                          "Tambahkan Kelas Anda",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 18, color: Colors.grey),
-                        ),
-                      ),
-                    );
-                  }
+            const SizedBox(height: 24),
+            StreamBuilder<List<ClassModel>>(
+              stream: _getClassesStream(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                final classes = snapshot.data ?? [];
 
-                  final classes = snapshot.data!;
-                  
-                  return ListView.builder(
-                    itemCount: classes.length,
-                    itemBuilder: (context, index) {
-                      final classItem = classes[index];
-                      return _buildClassCard(classItem);
-                    },
+                if (classes.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Text('Belum ada kelas.\nSilakan tambahkan kelas baru.', textAlign: TextAlign.center),
+                    ),
                   );
-                },
-              ),
+                }
+
+                final Map<String, List<ClassModel>> groupedClasses = {};
+                for (var cls in classes) {
+                  (groupedClasses[cls.dayOfWeek] ??= []).add(cls);
+                }
+                final sortedDays = groupedClasses.keys.toList();
+
+                return ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: sortedDays.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) {
+                    final day = sortedDays[index];
+                    final dayClasses = groupedClasses[day]!;
+                    return _buildDaySection(day, dayClasses);
+                  },
+                );
+              },
             ),
           ],
         ),
@@ -162,34 +221,90 @@ class _ClassListScreenState extends State<ClassListScreen> {
     );
   }
 
-  Widget _buildClassCard(ClassModel classItem) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: InkWell(
-        onTap: () {
-          // Navigasi ke halaman konfirmasi sebelum mengerjakan kuis
-          Get.toNamed(AppRoutes.quizStart, arguments: classItem);
-        },
-        borderRadius: BorderRadius.circular(15),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Anda bisa menambahkan waktu jika ada datanya
-              // Text('${classItem.startTime} - ${classItem.endTime}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              // const SizedBox(height: 8),
-              Text(
-                classItem.name,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              if(classItem.programStudy != null) ...[
-                const SizedBox(height: 4),
-                Text(classItem.programStudy!, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ],
+  Widget _buildDaySection(String day, List<ClassModel> dayClasses) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(day, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.2,
           ),
+          itemCount: dayClasses.length,
+          itemBuilder: (context, index) {
+            final classItem = dayClasses[index];
+            final color = index % 2 == 0 ? const Color(0xFFCBF1F5) : const Color(0xFFFFE3E1);
+            
+            return ClassCard(
+              classModel: classItem,
+              color: color,
+              onTap: () => _navigateToClassDetail(classItem),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class ClassCard extends StatelessWidget {
+  final ClassModel classModel;
+  final Color color;
+  final VoidCallback onTap;
+
+  const ClassCard({
+    super.key,
+    required this.classModel,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey,
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            )
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${classModel.startTime} - ${classModel.endTime}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+            const Spacer(),
+            Text(
+              classModel.name,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              classModel.programStudy ?? '',
+              style: const TextStyle(fontSize: 12),
+            ),
+            const Spacer(),
+          ],
         ),
       ),
     );

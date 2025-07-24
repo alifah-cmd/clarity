@@ -119,23 +119,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     validator: (v) =>
                         v != _passwordController.text ? 'Tidak cocok' : null,
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 40),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _register,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFE57373),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     child: _isLoading
                         ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
                             ),
                           )
                         : const Text(

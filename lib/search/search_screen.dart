@@ -1,14 +1,12 @@
-// ignore_for_file: unused_element
-
+import 'dart:async'; 
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:myapp/models/note_model.dart';
-import 'package:myapp/models/search_history_model.dart';
-import 'package:myapp/models/task_model.dart';
-import 'package:myapp/services/supabase_service.dart';
-import 'package:myapp/widgets/task_card.dart';
-import 'package:myapp/widgets/note_card.dart';
-import 'package:myapp/utils/app_routes.dart';
+import 'package:get/get.dart'; 
+import '../../models/class_model.dart';
+import '../../models/note_model.dart';
+import '../../models/task_model.dart';
+import '../../models/search_history_model.dart';
+import '../../services/supabase_service.dart';
+import '../../utils/app_routes.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -19,19 +17,55 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final _searchController = TextEditingController();
-  final SupabaseService _supabaseService = SupabaseService();
+  final _supabaseService = SupabaseService();
+  
+  List<dynamic> _results = [];
+  bool _isLoading = false;
+  String _searchQuery = '';
+  Timer? _debounce; 
 
-  // State untuk menampung hasil pencarian
-  Future<Map<String, List<dynamic>>>? _searchResultsFuture;
+  Future<void> _performSearch(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _results = [];
+        _isLoading = false;
+      });
+      return;
+    }
 
-  void _performSearch(String query) {
-    if (query.trim().isEmpty) return;
-    FocusScope.of(context).unfocus();
+    setState(() => _isLoading = true);
+
+    try {
+      final results = await _supabaseService.searchAllItems(query);
+      if (mounted) setState(() => _results = results);
+    } catch (e) {
+      Get.snackbar('Error', 'Gagal melakukan pencarian: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() => _searchQuery = query);
     
-    // Panggil fungsi search dari service dan simpan Future-nya
-    setState(() {
-      _searchResultsFuture = _supabaseService.searchItems(query.trim());
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _performSearch(query);
     });
+  }
+
+  void _saveHistoryAndSearch(String query) {
+    if (query.trim().isNotEmpty) {
+      _supabaseService.addSearchHistory(query.trim());
+      _performSearch(query);
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel(); 
+    super.dispose();
   }
 
   @override
@@ -45,147 +79,131 @@ class _SearchScreenState extends State<SearchScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Get.back(),
         ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _searchController,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Search tasks, notes...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30.0),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onSubmitted: _performSearch,
+        title: TextField(
+          controller: _searchController,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Search...',
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide.none,
             ),
-            const SizedBox(height: 32),
-            
-            // Tampilkan hasil pencarian ATAU riwayat pencarian
-            Expanded(
-              child: _searchResultsFuture == null
-                  ? _buildRecentSearches()
-                  : _buildSearchResults(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Widget untuk menampilkan riwayat pencarian
-  Widget _buildRecentSearches() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Recent Searches',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Expanded(
-          child: StreamBuilder<List<SearchHistory>>(
-            // MENGGUNAKAN FUNGSI DARI SERVICE
-            stream: _supabaseService.getRecentSearchesStream(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final history = snapshot.data ?? [];
-              if (history.isEmpty) {
-                return _buildEmptyState('No recent searches to display');
-              }
-              return ListView.builder(
-                itemCount: history.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    leading: const Icon(Icons.history),
-                    title: Text(history[index].keyword),
-                    onTap: () {
-                      _searchController.text = history[index].keyword;
-                      _performSearch(history[index].keyword);
-                    },
-                  );
-                },
-              );
-            },
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
           ),
+          onChanged: _onSearchChanged,
+          onSubmitted: _saveHistoryAndSearch,
         ),
-      ],
+      ),
+      body: _buildBody(),
     );
   }
 
-  // Widget untuk menampilkan hasil pencarian
+  Widget _buildBody() {
+    if (_searchQuery.isNotEmpty) {
+      return _buildSearchResults();
+    }
+    return _buildSearchHistory();
+  }
+
+  Widget _buildSearchHistory() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Recent Searches',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: StreamBuilder<List<SearchHistory>>(
+              stream: _supabaseService.getSearchHistoryStream(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final history = snapshot.data ?? [];
+                if (history.isEmpty) {
+                  return Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: const Center(child: Text('No recent searches to display')),
+                  );
+                }
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: ListView.builder(
+                    itemCount: history.length,
+                    itemBuilder: (context, index) {
+                      final item = history[index];
+                      return ListTile(
+                        leading: const Icon(Icons.history),
+                        title: Text(item.keyword),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close, size: 20),
+                          onPressed: () => _supabaseService.deleteSearchHistory(item.id),
+                        ),
+                        onTap: () {
+                          _searchController.text = item.keyword;
+                          _onSearchChanged(item.keyword); 
+                            },
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSearchResults() {
-    return FutureBuilder<Map<String, List<dynamic>>>(
-      // MENGGUNAKAN FUNGSI DARI SERVICE
-      future: _searchResultsFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return _buildEmptyState('Error: ${snapshot.error}');
-        }
-        
-        final tasks = snapshot.data?['tasks'] as List<Task>? ?? [];
-        final notes = snapshot.data?['notes'] as List<Note>? ?? [];
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_results.isEmpty) {
+      return const Center(child: Text('Tidak ada hasil ditemukan.'));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16.0),
+      itemCount: _results.length,
+      itemBuilder: (context, index) {
+        final item = _results[index];
 
-        if (tasks.isEmpty && notes.isEmpty) {
-          return _buildEmptyState('No results found for "${_searchController.text}"');
-        }
-
-        return ListView(
-          children: [
-            if (tasks.isNotEmpty) ...[
-              const Text('Tasks Found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              ...tasks.map((task) => TaskCard(task: task, onToggleComplete: (taskId, isCompleted) {  },)),
-              const SizedBox(height: 24),
-            ],
-            if (notes.isNotEmpty) ...[
-              const Text('Notes Found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              ...notes.map((note) => NoteCard(note: note, onTap: (){
-                Get.toNamed(AppRoutes.noteForm, arguments: note);
-              }, onLongPress: (){})),
-            ],
-          ],
-        );
+        if (item is Task) return _buildTaskTile(item);
+        if (item is ClassModel) return _buildClassTile(item);
+        if (item is Note) return _buildNoteTile(item);
+        return const SizedBox.shrink();
       },
     );
   }
 
-  Widget _buildEmptyState(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Center(
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.grey),
-        ),
-      ),
-    );
-  }
-}
-
-extension on SupabaseService {
-  Future<Map<String, List>>? searchItems(String trim) {
-    return null;
-  }
-  
-  getRecentSearchesStream() {}
+  Widget _buildTaskTile(Task task) => ListTile(
+        leading: const Icon(Icons.check_circle_outline, color: Colors.purple),
+        title: Text(task.title),
+        subtitle: const Text('Jadwal'),
+      );
+  Widget _buildClassTile(ClassModel classModel) => ListTile(
+        leading: const Icon(Icons.school_outlined, color: Colors.blue),
+        title: Text(classModel.name),
+        subtitle: Text('Kelas: ${classModel.dayOfWeek}, ${classModel.startTime}'),
+        onTap: () => Get.toNamed(AppRoutes.classDetail, arguments: classModel),
+      );
+  Widget _buildNoteTile(Note note) => ListTile(
+        leading: const Icon(Icons.description_outlined, color: Colors.orange),
+        title: Text(note.title),
+        subtitle: const Text('Catatan'),
+        onTap: () => Get.toNamed(AppRoutes.noteForm, arguments: note),
+      );
 }

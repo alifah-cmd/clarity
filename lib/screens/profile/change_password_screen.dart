@@ -32,7 +32,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     try {
       await _supabaseService.updatePassword(_newPasswordController.text.trim());
-      Get.back(); // Kembali ke halaman profil
+      Get.back(); 
       Get.snackbar('Sukses', 'Password berhasil diperbarui', backgroundColor: Colors.green.withAlpha((0.8 * 255).toInt()),);
     } catch (e) {
       Get.snackbar('Error', e.toString(), backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
