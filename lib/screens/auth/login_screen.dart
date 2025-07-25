@@ -12,11 +12,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
 
   bool _isLoading = false;
+  bool _isPasswordObscured = true;
 
   @override
   void dispose() {
@@ -26,13 +27,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       await Supabase.instance.client.auth.signInWithPassword(
@@ -43,31 +41,31 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         Get.offAllNamed(AppRoutes.main);
       }
-    } on AuthException catch (error) {
+    } on AuthException catch (e) {
       if (mounted) {
         Get.snackbar(
           'Login Gagal',
-          error.message,
+          e.message,
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.red,
           colorText: Colors.white,
         );
       }
-    } catch (error) {
+    } catch (e) {
       if (mounted) {
         Get.snackbar(
           'Terjadi Kesalahan',
-          'Tidak dapat memproses permintaan Anda.',
+          'Tidak dapat menghubungi server. Periksa koneksi Anda.',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.red,
           colorText: Colors.white,
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-
-    setState(() {
-      _isLoading = false;
-    });
   }
 
   @override
@@ -77,108 +75,123 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 32.0,
-              vertical: 24.0,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Align(
-                    alignment: Alignment.topLeft,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Get.back(),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-
                   Image.asset('assets/images/clarity.png', height: 80),
                   const SizedBox(height: 80),
 
-                  CustomInputField(
-                    controller: _emailController,
-                    labelText: 'Enter your email',
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || !GetUtils.isEmail(value)) {
-                        return 'Masukkan alamat email yang valid';
-                      }
-                      return null;
-                    },
-                  ),
+                  _buildEmailField(),
                   const SizedBox(height: 20),
-
-                  CustomInputField(
-                    controller: _passwordController,
-                    labelText: 'Confirm Password',
-                    obscureText: true,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Password tidak boleh kosong';
-                      }
-                      return null;
-                    },
-                  ),
+                  _buildPasswordField(),
                   const SizedBox(height: 40),
 
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _login,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE57373),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child:
-                        _isLoading
-                            ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                            : const Text(
-                              'Login',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                  ),
+                  _buildLoginButton(),
                   const SizedBox(height: 24),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Already have an account?"),
-                      TextButton(
-                        onPressed: () => Get.toNamed(AppRoutes.register),
-                        child: const Text(
-                          'Register',
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  _buildRegisterRedirect(),
+                  const SizedBox(height: 24),
                   Image.asset('assets/images/bag.png', height: 130),
-                  const SizedBox(height: 130),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildEmailField() {
+    return CustomInputField(
+      controller: _emailController,
+      labelText: 'Enter your email',
+      keyboardType: TextInputType.emailAddress,
+      validator: (value) {
+        if (value == null || !GetUtils.isEmail(value)) {
+          return 'Masukkan alamat email yang valid';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return TextFormField(
+      controller: _passwordController,
+      obscureText: _isPasswordObscured,
+      decoration: InputDecoration(
+        labelText: 'Password', 
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _isPasswordObscured ? Icons.visibility_off : Icons.visibility,
+          ),
+          onPressed: () {
+            setState(() {
+              _isPasswordObscured = !_isPasswordObscured;
+            });
+          },
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Password tidak boleh kosong';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildLoginButton() {
+    return ElevatedButton(
+      onPressed: _isLoading ? null : _login,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFE57373),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: _isLoading
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 3,
+              ),
+            )
+          : const Text(
+              'Login',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+    );
+  }
+
+  Widget _buildRegisterRedirect() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text("Don't have an account?"), 
+        TextButton(
+          onPressed: () => Get.toNamed(AppRoutes.register),
+          child: const Text(
+            'Register',
+            style: TextStyle(
+              color: Colors.blue,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

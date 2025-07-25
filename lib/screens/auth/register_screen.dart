@@ -14,12 +14,15 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  
   bool _isLoading = false;
+  bool _isPasswordObscured = true;
+  bool _isConfirmPasswordObscured = true;
 
   @override
   void dispose() {
@@ -31,7 +34,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) return;
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) return;
 
     setState(() => _isLoading = true);
 
@@ -46,15 +50,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           fullName: _nameController.text.trim(),
         );
       }
-
       if (mounted) {
         Get.snackbar(
           'Registrasi Berhasil',
-          'Periksa email untuk verifikasi.',
+          'Periksa email Anda untuk verifikasi akun.',
           backgroundColor: Colors.green,
           colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
         );
-        Get.offNamed(AppRoutes.login);
+        Get.offAllNamed(AppRoutes.login);
       }
     } on AuthException catch (e) {
       Get.snackbar(
@@ -62,17 +66,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
         e.message,
         backgroundColor: Colors.red,
         colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
       );
     } catch (e) {
       Get.snackbar(
-        'Error',
-        'Terjadi kesalahan.',
+        'Terjadi Kesalahan',
+        'Tidak dapat menghubungi server. Periksa koneksi internet Anda.',
         backgroundColor: Colors.red,
         colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-
-    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
@@ -86,84 +94,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Form(
               key: _formKey,
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Image.asset('assets/images/clarity.png', height: 80),
                   const SizedBox(height: 48),
-                  CustomInputField(
-                    controller: _nameController,
-                    labelText: 'Full Name',
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'Nama wajib diisi' : null,
-                  ),
+                  
+                  _buildNameField(),
                   const SizedBox(height: 20),
-                  CustomInputField(
-                    controller: _emailController,
-                    labelText: 'Email',
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (v) =>
-                        v == null || !GetUtils.isEmail(v) ? 'Email tidak valid' : null,
-                  ),
+                  _buildEmailField(),
                   const SizedBox(height: 20),
-                  CustomInputField(
-                    controller: _passwordController,
-                    labelText: 'Password',
-                    obscureText: true,
-                    validator: (v) =>
-                        v == null || v.length < 6 ? 'Minimal 6 karakter' : null,
-                  ),
+                  _buildPasswordField(),
                   const SizedBox(height: 20),
-                  CustomInputField(
-                    controller: _confirmPasswordController,
-                    labelText: 'Confirm Password',
-                    obscureText: true,
-                    validator: (v) =>
-                        v != _passwordController.text ? 'Tidak cocok' : null,
-                  ),
+                  _buildConfirmPasswordField(),
                   const SizedBox(height: 40),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _register,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE57373),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                            ),
-                          )
-                        : const Text(
-                            'Register',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                  ),
+                  _buildRegisterButton(),
                   const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Already have an account?"),
-                      TextButton(
-                        onPressed: () => Get.back(),
-                        child: const Text(
-                          'Login',
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  _buildLoginRedirect(),
+                  const SizedBox(height: 24),
                   Image.asset('assets/images/bag.png', height: 130),
                 ],
               ),
@@ -171,6 +119,115 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
+    );
+  }
+  Widget _buildNameField() {
+    return CustomInputField(
+      controller: _nameController,
+      labelText: 'Full Name',
+      validator: (val) => val == null || val.isEmpty ? 'Nama wajib diisi' : null,
+    );
+  }
+
+  Widget _buildEmailField() {
+    return CustomInputField(
+      controller: _emailController,
+      labelText: 'Email',
+      keyboardType: TextInputType.emailAddress,
+      validator: (val) => val == null || !GetUtils.isEmail(val) ? 'Email tidak valid' : null,
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return TextFormField(
+      controller: _passwordController,
+      obscureText: _isPasswordObscured,
+      decoration: InputDecoration(
+        labelText: 'Password',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _isPasswordObscured ? Icons.visibility_off : Icons.visibility,
+          ),
+          onPressed: () {
+            setState(() {
+              _isPasswordObscured = !_isPasswordObscured;
+            });
+          },
+        ),
+      ),
+      validator: (val) => val == null || val.length < 6 ? 'Password minimal 6 karakter' : null,
+    );
+  }
+
+  Widget _buildConfirmPasswordField() {
+    return TextFormField(
+      controller: _confirmPasswordController,
+      obscureText: _isConfirmPasswordObscured,
+      decoration: InputDecoration(
+        labelText: 'Confirm Password',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _isConfirmPasswordObscured ? Icons.visibility_off : Icons.visibility,
+          ),
+          onPressed: () {
+            setState(() {
+              _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
+            });
+          },
+        ),
+      ),
+      validator: (val) => val != _passwordController.text ? 'Password tidak cocok' : null,
+    );
+  }
+
+  Widget _buildRegisterButton() {
+    return ElevatedButton(
+      onPressed: _isLoading ? null : _register,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFE57373),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: _isLoading
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 3,
+              ),
+            )
+          : const Text(
+              'Register',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+    );
+  }
+
+  Widget _buildLoginRedirect() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text("Already have an account?"),
+        TextButton(
+          onPressed: () => Get.back(),
+          child: const Text(
+            'Login',
+            style: TextStyle(
+              color: Colors.blue,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

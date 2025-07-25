@@ -50,11 +50,10 @@ class QuizStartScreen extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            // Ilustrasi (pastikan path gambar sudah benar)
-            // Image.asset(
-            //   'assets/images/areyou.png',
-            //   height: Get.height * 0.35,
-            // ),
+              Image.asset(
+              'assets/images/areyou.png',
+              height: Get.height * 0.35,
+            ),
           ],
         ),
       ),
