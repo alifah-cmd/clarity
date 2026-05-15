@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../services/supabase_service.dart';
 import '../../utils/app_routes.dart';
 import '../../widgets/custom_input_field.dart';
@@ -19,7 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _isPasswordObscured = true;
   bool _isConfirmPasswordObscured = true;
@@ -50,6 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           fullName: _nameController.text.trim(),
         );
       }
+
       if (mounted) {
         Get.snackbar(
           'Registrasi Berhasil',
@@ -61,21 +61,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Get.offAllNamed(AppRoutes.login);
       }
     } on AuthException catch (e) {
-      Get.snackbar(
-        'Registrasi Gagal',
-        e.message,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      _showErrorSnackbar('Registrasi Gagal', e.message);
     } catch (e) {
-      Get.snackbar(
-        'Terjadi Kesalahan',
-        'Tidak dapat menghubungi server. Periksa koneksi internet Anda.',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      _showErrorSnackbar('Terjadi Kesalahan', 'Tidak dapat menghubungi server.');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -83,14 +71,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  void _showErrorSnackbar(String title, String message) {
+    if (!mounted) return;
+    Get.snackbar(
+      title,
+      message,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F2F9),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.home_outlined, color: Colors.black54),
+          onPressed: () => Get.offAllNamed(AppRoutes.welcome), 
+       ),
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
             child: Form(
               key: _formKey,
               child: Column(
@@ -99,7 +106,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   Image.asset('assets/images/clarity.png', height: 80),
                   const SizedBox(height: 48),
-                  
                   _buildNameField(),
                   const SizedBox(height: 20),
                   _buildEmailField(),
@@ -112,7 +118,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 24),
                   _buildLoginRedirect(),
                   const SizedBox(height: 24),
-                  Image.asset('assets/images/bag.png', height: 130),
+                  Image.asset('assets/images/bag.png', height: 100),
                 ],
               ),
             ),
@@ -121,6 +127,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+
   Widget _buildNameField() {
     return CustomInputField(
       controller: _nameController,
@@ -218,9 +225,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       children: [
         const Text("Already have an account?"),
         TextButton(
-          onPressed: () => Get.back(),
+          onPressed: () => Get.toNamed(AppRoutes.login), 
           child: const Text(
-            'Login',
+            'Login', 
             style: TextStyle(
               color: Colors.blue,
               fontWeight: FontWeight.bold,
@@ -231,3 +238,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+

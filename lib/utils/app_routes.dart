@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import '../../search/search_screen.dart';
 import '../../models/class_model.dart';
-import '../../models/quiz_model.dart';
+import '../../models/quiz_models.dart';
 import '../../screens/splash/splash_screen.dart';
 import '../../screens/auth/welcome_screen.dart';
 import '../../screens/auth/login_screen.dart';
@@ -13,7 +13,8 @@ import '../../screens/notes/notes_list_screen.dart';
 import '../../screens/notes/note_form_screen.dart';
 import '../../screens/class/class_list_screen.dart';
 import '../../screens/class/class_detail_screen.dart';
-import '../../screens/quiz/make_quiz_screen.dart';
+import '../../screens/quiz/quiz_list_screen.dart';
+import '../../screens/quiz/make_or_edit_quiz_screen.dart';
 import '../../screens/quiz/quiz_form_screen.dart';
 import '../../screens/quiz/quiz_taking_screen.dart';
 import '../../screens/profile/profile_screen.dart';
@@ -38,7 +39,9 @@ class AppRoutes {
   static const String quizStart = '/quiz-start';
   static const String search = '/search';
   static const String classDetail = '/class-detail';
-  static const String makeQuiz = '/make-quiz';
+  static const String quizList = '/quiz-list';
+  static const String makeOrEditQuiz = '/make-or-edit-quiz';
+
   static final List<GetPage> routes = [
     GetPage(name: splash, page: () => const SplashScreen()),
     GetPage(name: welcome, page: () => const WelcomeScreen()),
@@ -59,12 +62,28 @@ class AppRoutes {
       name: classDetail,
       page: () => ClassDetailScreen(classModel: Get.arguments as ClassModel),
     ),
+
     GetPage(
-      name: makeQuiz,
-      page: () => MakeQuizScreen(classId: Get.arguments as String),
+      name: quizList,
+      page: () {
+        final args = Get.arguments as Map<String, dynamic>;
+        return QuizListScreen(
+          classId: args['classId'],
+          className: args['className'],
+        );
+      },
+    ),
+    GetPage(
+      name: makeOrEditQuiz,
+      page: () {
+        final args = Get.arguments as Map<String, dynamic>;
+        return MakeOrEditQuizScreen(
+          classId: args['classId'],
+          quizId: args['quizId'],
+        );
+      },
     ),
 
-    GetPage(name: quizStart, page: () => const QuizStartScreen()),
     GetPage(
       name: AppRoutes.quizTaking,
       page: () => QuizTakingScreen(quiz: Get.arguments as Quiz),

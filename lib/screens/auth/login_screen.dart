@@ -42,25 +42,9 @@ class _LoginScreenState extends State<LoginScreen> {
         Get.offAllNamed(AppRoutes.main);
       }
     } on AuthException catch (e) {
-      if (mounted) {
-        Get.snackbar(
-          'Login Gagal',
-          e.message,
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      }
+      _showErrorSnackbar('Login Gagal', e.message);
     } catch (e) {
-      if (mounted) {
-        Get.snackbar(
-          'Terjadi Kesalahan',
-          'Tidak dapat menghubungi server. Periksa koneksi Anda.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      }
+      _showErrorSnackbar('Terjadi Kesalahan', 'Tidak dapat menghubungi server.');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -68,14 +52,33 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showErrorSnackbar(String title, String message) {
+    if (!mounted) return;
+    Get.snackbar(
+      title,
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F2F9),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.home_outlined, color: Colors.black54),
+          onPressed: () => Get.offAllNamed(AppRoutes.welcome), 
+        ),
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
             child: Form(
               key: _formKey,
               child: Column(
@@ -83,19 +86,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Image.asset('assets/images/clarity.png', height: 80),
-                  const SizedBox(height: 80),
-
+                  const SizedBox(height: 60),
                   _buildEmailField(),
                   const SizedBox(height: 20),
                   _buildPasswordField(),
                   const SizedBox(height: 40),
-
                   _buildLoginButton(),
                   const SizedBox(height: 24),
-
                   _buildRegisterRedirect(),
                   const SizedBox(height: 24),
-                  Image.asset('assets/images/bag.png', height: 130),
+                  Image.asset('assets/images/bag.png', height: 100),
                 ],
               ),
             ),
@@ -110,12 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
       controller: _emailController,
       labelText: 'Enter your email',
       keyboardType: TextInputType.emailAddress,
-      validator: (value) {
-        if (value == null || !GetUtils.isEmail(value)) {
-          return 'Masukkan alamat email yang valid';
-        }
-        return null;
-      },
+      validator: (v) => v == null || !GetUtils.isEmail(v) ? 'Email tidak valid' : null,
     );
   }
 
@@ -124,25 +119,14 @@ class _LoginScreenState extends State<LoginScreen> {
       controller: _passwordController,
       obscureText: _isPasswordObscured,
       decoration: InputDecoration(
-        labelText: 'Password', 
+        labelText: 'Password',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         suffixIcon: IconButton(
-          icon: Icon(
-            _isPasswordObscured ? Icons.visibility_off : Icons.visibility,
-          ),
-          onPressed: () {
-            setState(() {
-              _isPasswordObscured = !_isPasswordObscured;
-            });
-          },
+          icon: Icon(_isPasswordObscured ? Icons.visibility_off : Icons.visibility),
+          onPressed: () => setState(() => _isPasswordObscured = !_isPasswordObscured),
         ),
       ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Password tidak boleh kosong';
-        }
-        return null;
-      },
+      validator: (v) => v == null || v.isEmpty ? 'Password tidak boleh kosong' : null,
     );
   }
 
@@ -152,27 +136,11 @@ class _LoginScreenState extends State<LoginScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFFE57373),
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: _isLoading
-          ? const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 3,
-              ),
-            )
-          : const Text(
-              'Login',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+          : const Text('Login', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w700)),
     );
   }
 
@@ -180,16 +148,10 @@ class _LoginScreenState extends State<LoginScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text("Don't have an account?"), 
+        const Text("Don't have an account?"),
         TextButton(
           onPressed: () => Get.toNamed(AppRoutes.register),
-          child: const Text(
-            'Register',
-            style: TextStyle(
-              color: Colors.blue,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          child: const Text('Register', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
         ),
       ],
     );

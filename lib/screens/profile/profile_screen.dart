@@ -56,6 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
   Future<void> _updateProfile() async {
     setState(() => _isLoading = true);
     try {
@@ -87,6 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
+
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
@@ -104,6 +106,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _signOut() async {
+    try {
+      await _supabaseService.signOut();
+      if (mounted) {
+        // Navigasi ke halaman welcome dan hapus semua halaman sebelumnya
+        Get.offAllNamed(AppRoutes.welcome);
+      }
+    } catch (e) {
+      Get.snackbar('Error Logging Out', 'Failed to sign out: ${e.toString()}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -112,10 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('My Account', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Get.back(),
-        ),
+        automaticallyImplyLeading: false, 
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -197,9 +208,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           : const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),
+                  const SizedBox(height: 20), 
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _signOut,
+                      icon: const Icon(Icons.logout, color: Colors.white),
+                      label: const Text('Log Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
     );
   }
 }
+

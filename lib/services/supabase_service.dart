@@ -13,27 +13,19 @@ class SupabaseService {
 
   Future<void> registerUser({required String fullName}) async {
     final userId = _client.auth.currentUser!.id;
-
-    final result = await _client
-        .from('users') 
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle();
-
-    if (result == null) {
-      await _client.from('users').insert({ 
-        'id': userId,
-        'full_name': fullName,
-      });
-    }
+    await _client.from('profiles').insert({
+      'id': userId,
+      'full_name': fullName,
+    });
   }
 
   Future<UserProfile> getProfile() async {
     final userId = _client.auth.currentUser!.id;
     final data =
-        await _client.from('users').select().eq('id', userId).single();
+        await _client.from('profiles').select().eq('id', userId).single();
     return UserProfile.fromMap(data);
   }
+
   Future<void> updateProfile({required String fullName, String? avatarUrl}) async {
     final userId = _client.auth.currentUser!.id;
     final updates = {
@@ -41,12 +33,16 @@ class SupabaseService {
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
     if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
-
-    await _client.from('users').update(updates).eq('id', userId);
+    await _client.from('profiles').update(updates).eq('id', userId);
   }
 
   Future<void> updatePassword(String newPassword) async {
     await _client.auth.updateUser(UserAttributes(password: newPassword));
+  }
+
+
+  Future<void> signOut() async {
+    await _client.auth.signOut();
   }
 
   Future<String> uploadImageFile(File file, String bucketName) async {
@@ -62,7 +58,6 @@ class SupabaseService {
 
     return _client.storage.from(bucketName).getPublicUrl(fileName);
   }
-
   Future<String> uploadImageBytes(Uint8List bytes, String fileExtension, String bucketName) async {
     final userId = _client.auth.currentUser!.id;
     final fileName = '$userId/${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
@@ -154,8 +149,7 @@ class SupabaseService {
     classData['user_id'] = userId;
     await _client.from('classes').insert(classData);
   }
-
-  Future<List<dynamic>> searchAllItems(String query) async {
+ Future<List<dynamic>> searchAllItems(String query) async {
     if (query.isEmpty) {
       return []; 
     }
@@ -191,7 +185,8 @@ class SupabaseService {
     return combinedList;
   }
 
-  Stream<List<dynamic>> getCombinedScheduleStream(DateTime date) {
+
+Stream<List<dynamic>> getCombinedScheduleStream(DateTime date) {
     final userId = _client.auth.currentUser!.id;
     final startOfDay = DateTime.utc(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
@@ -244,9 +239,8 @@ class SupabaseService {
         })
         .asyncMap((event) => event);
   
-  }
-
-  Stream<List<SearchHistory>> getSearchHistoryStream() {
+}
+Stream<List<SearchHistory>> getSearchHistoryStream() {
     final userId = _client.auth.currentUser!.id;
     return _client
         .from('search_history')
@@ -256,7 +250,6 @@ class SupabaseService {
         .limit(10)
         .map((maps) => maps.map((map) => SearchHistory.fromMap(map)).toList());
   }
-
   Future<void> addSearchHistory(String keyword) async {
     final userId = _client.auth.currentUser!.id;
     await _client.from('search_history').delete().match({
@@ -268,8 +261,37 @@ class SupabaseService {
       'keyword': keyword,
     });
   }
-
   Future<void> deleteSearchHistory(String id) async {
     await _client.from('search_history').delete().eq('id', id);
   }
 }
+
+Future<List<Quiz>> getQuizzesForClass(String classId) async {
+    final response = await _client
+        .from('quizzes')
+        .select('id, title')
+        .eq('class_id', classId)
+        .order('created_at', ascending: false);
+    return (response as List).map((map) => Quiz.fromMap(map)).toList();
+  }
+
+  Future<Quiz> getQuizDetails(String quizId) async {
+    final response = await _client
+        .from('quizzes')
+        .select('*, questions(*, answers(*))')
+        .eq('id', quizId)
+        .single();
+    return Quiz.fromMap(response);
+  }
+  Future<void> deleteQuiz(String quizId) async {
+
+    final questionsResponse = await _client.from('questions').select('id').eq('quiz_id', quizId);
+    final questionIds = (questionsResponse as List).map((q) => q['id'] as String).toList();
+
+    if (questionIds.isNotEmpty) {
+      await _client.from('answers').delete().in_('question_id', questionIds);
+    }
+    await _client.from('questions').delete().eq('quiz_id', quizId);
+    await _client.from('quizzes').delete().eq('id', quizId);
+  }
+
